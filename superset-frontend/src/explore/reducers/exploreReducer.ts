@@ -28,7 +28,7 @@ import {
   ControlStateMapping,
   Dataset,
 } from '@superset-ui/chart-controls';
-import { omit, pick } from 'lodash-es';
+import { omit, pick } from 'lodash';
 import { DYNAMIC_PLUGIN_CONTROLS_READY } from 'src/components/Chart/chartAction';
 import { getControlsState } from 'src/explore/store';
 import {
@@ -68,7 +68,7 @@ export interface ExploreState {
     };
   };
   metadata?: {
-    editors?: string[] | null;
+    owners?: string[] | null;
   };
   compatibleMetrics?: string[] | null;
   compatibleDimensions?: string[] | null;
@@ -157,14 +157,14 @@ interface SetStashFormDataAction {
   isHidden: boolean;
 }
 
-// Editor can be either a number (subject ID) or an object with value/label
+// Owner can be either a number (user ID) or an object with value/label
 // This handles both Slice format (number[]) and select control format ({value, label}[])
-type EditorItem = number | { value: number; label: string };
+type OwnerItem = number | { value: number; label: string };
 
 interface SliceUpdatedAction {
   type: typeof actions.SLICE_UPDATED;
-  slice: Omit<Slice, 'editors'> & {
-    editors?: EditorItem[];
+  slice: Omit<Slice, 'owners'> & {
+    owners?: OwnerItem[];
     slice_name?: string;
   };
 }
@@ -538,6 +538,7 @@ export default function exploreReducer(
       const typedAction = action as SetExploreControlsAction;
       return {
         ...state,
+        form_data: typedAction.formData,
         controls: getControlsState(
           state as Parameters<typeof getControlsState>[0],
           typedAction.formData,
@@ -614,26 +615,26 @@ export default function exploreReducer(
     },
     [actions.SLICE_UPDATED]() {
       const typedAction = action as SliceUpdatedAction;
-      // Handle editors that can be either number[] or Array<{value, label}>
-      const getEditorId = (editor: EditorItem): number =>
-        typeof editor === 'number' ? editor : editor.value;
-      const getEditorLabel = (editor: EditorItem): string | null =>
-        typeof editor === 'number' ? null : editor.label;
+      // Handle owners that can be either number[] or Array<{value, label}>
+      const getOwnerId = (owner: OwnerItem): number =>
+        typeof owner === 'number' ? owner : owner.value;
+      const getOwnerLabel = (owner: OwnerItem): string | null =>
+        typeof owner === 'number' ? null : owner.label;
       return {
         ...state,
         slice: {
           ...state.slice,
           ...typedAction.slice,
-          editors: typedAction.slice.editors
-            ? typedAction.slice.editors.map(getEditorId)
+          owners: typedAction.slice.owners
+            ? typedAction.slice.owners.map(getOwnerId)
             : null,
         } as Slice,
         sliceName: typedAction.slice.slice_name ?? state.sliceName,
         metadata: {
           ...state.metadata,
-          editors: typedAction.slice.editors
-            ? (typedAction.slice.editors
-                .map(getEditorLabel)
+          owners: typedAction.slice.owners
+            ? (typedAction.slice.owners
+                .map(getOwnerLabel)
                 .filter((x): x is string => x !== null) as string[])
             : null,
         },
