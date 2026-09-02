@@ -147,6 +147,42 @@ describe('ControlPanelsContainer', () => {
     });
   });
 
+  test('resets Explore configuration only when it differs from its initial state', async () => {
+    const resetExploreConfiguration = jest.fn();
+    const props = getDefaultProps();
+    props.actions = {
+      setControlValue: jest.fn(),
+      resetExploreConfiguration,
+    };
+    props.exploreState = {
+      initialFormData: {
+        ...props.form_data,
+        row_limit: 100,
+      },
+    } as ExplorePageState['explore'];
+    props.form_data = {
+      ...props.form_data,
+      row_limit: 500,
+    };
+
+    const { rerender } = render(<ControlPanelsContainer {...props} />, {
+      useRedux: true,
+    });
+
+    const resetButton = screen.getByTestId('reset-explore-configuration');
+    expect(resetButton).toBeEnabled();
+    userEvent.click(resetButton);
+    expect(resetExploreConfiguration).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ControlPanelsContainer
+        {...props}
+        form_data={props.exploreState.initialFormData!}
+      />,
+    );
+    expect(screen.getByTestId('reset-explore-configuration')).toBeDisabled();
+  });
+
   test('renders ControlPanelSections no Customize Tab', async () => {
     getChartControlPanelRegistry().remove('table');
     getChartControlPanelRegistry().registerValue('table', {

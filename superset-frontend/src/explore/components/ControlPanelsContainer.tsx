@@ -59,9 +59,10 @@ import {
   sections,
 } from '@superset-ui/chart-controls';
 import { useSelector } from 'react-redux';
-import { kebabCase, isEqual } from 'lodash-es';
+import { kebabCase, isEqual } from 'lodash';
 
 import {
+  Button,
   Collapse,
   Loading,
   Label,
@@ -79,7 +80,7 @@ import ControlRow from './ControlRow';
 import Control from './Control';
 import { ExploreAlert } from './ExploreAlert';
 import { RunQueryButton } from './RunQueryButton';
-import { CONTROL_SECTIONS_ID, Operators } from '../constants';
+import { Operators } from '../constants';
 import { Clauses } from './controls/FilterControl/types';
 import StashFormDataContainer from './StashFormDataContainer';
 
@@ -100,8 +101,7 @@ const MATRIXIFY_INCOMPATIBLE_CHARTS = new Set([
 
 export type ControlPanelsContainerProps = {
   exploreState: ExplorePageState['explore'];
-  // Only setControlValue is used from actions in this component
-  actions: Pick<ExploreActions, 'setControlValue'>;
+  actions: Pick<ExploreActions, 'setControlValue' | 'resetExploreConfiguration'>;
   datasource_type: DatasourceType;
   chart: ChartState;
   controls: Record<string, ControlState>;
@@ -152,8 +152,8 @@ const Styles = styled.div`
   display: flex;
   flex-direction: column;
 
-  /* Resizable adds overflow-y: auto as a style to this div */
-  /* To override it, we need to use !important */
+  // Resizable add overflow-y: auto as a style to this div
+  // To override it, we need to use !important
   overflow: visible !important;
 
   #controlSections {
@@ -166,28 +166,28 @@ const Styles = styled.div`
     flex: 1 1 100%;
   }
 
-  /* Ensure Ant Design tabs allow content to expand */
-  .ant-tabs-body {
-    overflow: visible;
-    height: auto;
-  }
-
-  .ant-tabs-body-holder {
-    overflow: visible;
-    height: auto;
-  }
-
+  // Ensure Ant Design tabs allow content to expand
   .ant-tabs-content {
     overflow: visible;
     height: auto;
   }
 
-  /* Ensure collapse components can expand */
-  .ant-collapse-panel {
+  .ant-tabs-content-holder {
+    overflow: visible;
+    height: auto;
+  }
+
+  .ant-tabs-tabpane {
+    overflow: visible;
+    height: auto;
+  }
+
+  // Ensure collapse components can expand
+  .ant-collapse-content {
     overflow: visible;
   }
 
-  .ant-collapse-body {
+  .ant-collapse-content-box {
     overflow: visible;
   }
 
@@ -320,10 +320,14 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
   );
 
   const { form_data, actions } = props;
-  const { setControlValue } = actions;
+  const { resetExploreConfiguration, setControlValue } = actions;
   const { x_axis, adhoc_filters } = form_data;
 
   const previousXAxis = usePrevious(x_axis);
+  const hasConfigurationChanges = !isEqual(
+    form_data,
+    props.exploreState.initialFormData,
+  );
 
   useEffect(() => {
     if (
@@ -403,14 +407,7 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
               props.controls[controlName].value,
             );
         if (shouldUpdateControls) {
-          props.actions.setControlValue(
-            controlName,
-            alteredControls,
-            undefined,
-            {
-              programmatic: true,
-            },
-          );
+          props.actions.setControlValue(controlName, alteredControls);
         }
       });
     }
@@ -948,7 +945,7 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
     <>
       <Styles ref={containerRef}>
         <Tabs
-          id={CONTROL_SECTIONS_ID}
+          id="controlSections"
           data-test="control-tabs"
           allowOverflow={false}
           activeKey={activeTabKey}
@@ -1042,6 +1039,13 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
           ]}
         />
         <div css={actionButtonsContainerStyles}>
+          <Button
+            onClick={resetExploreConfiguration}
+            disabled={!hasConfigurationChanges}
+            data-test="reset-explore-configuration"
+          >
+            {t('Reset configuration')}
+          </Button>
           <RunQueryButton
             onQuery={props.onQuery}
             onStop={props.onStop}

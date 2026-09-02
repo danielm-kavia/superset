@@ -98,23 +98,8 @@ export function setControlValue(
   controlName: string,
   value: any,
   validationErrors?: any[],
-  options?: {
-    /**
-     * Marks a dispatch that no user gesture produced — effects rewriting
-     * transferred controls, derived values set alongside another control,
-     * and similar. The version-history session log skips these so an
-     * untouched chart never reports unsaved changes the user didn't make.
-     */
-    programmatic?: boolean;
-  },
 ) {
-  return {
-    type: SET_FIELD_VALUE,
-    controlName,
-    value,
-    validationErrors,
-    programmatic: options?.programmatic ?? false,
-  };
+  return { type: SET_FIELD_VALUE, controlName, value, validationErrors };
 }
 
 export const SET_EXPLORE_CONTROLS = 'UPDATE_EXPLORE_CONTROLS';
@@ -125,6 +110,11 @@ export function setExploreControls(formData: QueryFormData) {
 export const SET_FORM_DATA = 'UPDATE_FORM_DATA';
 export function setFormData(formData: QueryFormData) {
   return { type: SET_FORM_DATA, formData };
+}
+
+export const RESET_EXPLORE_CONFIGURATION = 'RESET_EXPLORE_CONFIGURATION';
+export function resetExploreConfiguration() {
+  return { type: RESET_EXPLORE_CONFIGURATION };
 }
 
 export const UPDATE_CHART_TITLE = 'UPDATE_CHART_TITLE';
@@ -301,6 +291,7 @@ export const exploreActions = {
   saveFaveStar,
   setControlValue,
   setExploreControls,
+  resetExploreConfiguration,
   setStashFormData,
   updateChartTitle,
   createNewSlice,

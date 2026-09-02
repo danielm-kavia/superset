@@ -45,14 +45,10 @@ import {
   applyMapStateToPropsToControl,
 } from 'src/explore/controlUtils';
 import { getDatasourceUid } from 'src/utils/getDatasourceUid';
+import { cloneDeep } from 'lodash';
 import { getUrlParam } from 'src/utils/urlUtils';
 import { URL_PARAMS } from 'src/constants';
 import { findPermission } from 'src/utils/findPermission';
-import getBootstrapData from 'src/utils/getBootstrapData';
-import { nanoid } from 'nanoid';
-import cloneDeep from 'lodash-es/cloneDeep';
-import { hydrateChartNormalization } from 'src/features/versionHistory/reducer';
-import { automaticNormalizationTransitions } from 'src/features/versionHistory/normalization';
 
 enum ColorSchemeType {
   CATEGORICAL = 'CATEGORICAL',
@@ -82,8 +78,6 @@ export const hydrateExplore =
     const fallbackSlice = sliceId ? sliceEntities?.slices?.[sliceId] : null;
     const initialSlice = slice ?? fallbackSlice;
     const initialFormData = form_data ?? initialSlice?.form_data;
-    const persistedFormData = cloneDeep(initialSlice?.form_data ?? {});
-    const preHydrationFormData = cloneDeep(initialFormData ?? {});
     const isCachedFormData = getUrlParam(URL_PARAMS.formDataKey) !== null;
     const [primarySliceNameSource, fallbackSliceNameSource] = isCachedFormData
       ? [initialFormData, initialSlice]
@@ -135,6 +129,9 @@ export const hydrateExplore =
     // must reflect the same migration so the two stay consistent.
     handleDeprecatedControls(initialFormData);
 
+    // Keep a stable, normalized configuration snapshot for Explore's reset
+    // action without sharing nested values with subsequently edited controls.
+    const initialFormDataSnapshot = cloneDeep(initialFormData);
     const initialExploreState = {
       form_data: initialFormData,
       slice: initialSlice,
@@ -171,7 +168,6 @@ export const hydrateExplore =
     if (linearColorSchemeKey) verifyColorScheme(ColorSchemeType.SEQUENTIAL);
 
     const granularExport = isFeatureEnabled(FeatureFlag.GranularExportControls);
-    const userSubjects = getBootstrapData()?.common?.user_subjects ?? [];
     const exploreState = {
       // note this will add `form_data` to state,
       // which will be manipulable by future reducers.
@@ -185,12 +181,11 @@ export const hydrateExplore =
       can_copy_clipboard: granularExport
         ? findPermission('can_copy_clipboard', 'Superset', user?.roles)
         : findPermission('can_csv', 'Superset', user?.roles),
-      can_overwrite: ensureIsArray(slice?.editors).some(
-        (editor: { id: number } | number) =>
-          userSubjects.includes(
-            typeof editor === 'number' ? editor : editor.id,
-          ),
-      ),
+      can_overwrite:
+        ensureIsArray(slice?.owners).includes(user?.userId as number) ||
+        ensureIsArray(metadata?.extra_owners).some(
+          (o: { id: number }) => o.id === user?.userId,
+        ),
       isDatasourceMetaLoading: false,
       isStarred: false,
       triggerRender: false,
@@ -200,6 +195,7 @@ export const hydrateExplore =
       // because `bootstrapData.controls` is undefined.
       controls: initialControls,
       form_data: initialFormData,
+      initialFormData: initialFormDataSnapshot,
       sliceName: initialSliceName,
       slice: initialSlice,
       controlsTransferred: explore.controlsTransferred,
@@ -219,10 +215,6 @@ export const hydrateExplore =
         exploreState,
       );
     });
-    const hydratedFormData = {
-      ...initialFormData,
-      ...getFormDataFromControls(exploreState.controls),
-    };
     const sliceFormData = initialSlice
       ? getFormDataFromControls(initialControls)
       : null;
@@ -243,7 +235,7 @@ export const hydrateExplore =
       lastRendered: 0,
     };
 
-    const result = dispatch({
+    return dispatch({
       type: HYDRATE_EXPLORE,
       data: {
         charts: {
@@ -263,28 +255,6 @@ export const hydrateExplore =
         dataMask,
       },
     });
-    if (
-      isFeatureEnabled(FeatureFlag.VersionHistory) &&
-      initialSlice?.slice_id &&
-      !isCachedFormData &&
-      !dashboardId &&
-      getUrlParam(URL_PARAMS.vizType) === null
-    ) {
-      dispatch(
-        hydrateChartNormalization({
-          chartId: initialSlice.slice_id,
-          hydrationSessionId: nanoid(),
-          transitions: automaticNormalizationTransitions(
-            persistedFormData,
-            preHydrationFormData,
-            hydratedFormData,
-          ),
-          invalidatedControls: {},
-          saveAttemptId: null,
-        }),
-      );
-    }
-    return result;
   };
 
 export type HydrateExplore = {
