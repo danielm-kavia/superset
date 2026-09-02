@@ -31,21 +31,15 @@ import * as downloadAsImage from 'src/utils/downloadAsImage';
 import * as exploreUtils from 'src/explore/exploreUtils';
 import {
   FeatureFlag,
-  QueryFormData,
   VizType,
   getChartMetadataRegistry,
 } from '@superset-ui/core';
-import { toChartStateHistoryState } from 'src/explore/exploreUtils/exploreHistory';
 import { useUnsavedChangesPrompt } from 'src/hooks/useUnsavedChangesPrompt';
 import ExploreHeader, { ExploreChartHeaderProps } from '.';
 import fs from 'fs';
 import path from 'path';
 
 const chartEndpoint = 'glob:*api/v1/chart/*';
-
-const EDIT_PROPERTIES_INITIAL_STATE = {
-  explore: { can_overwrite: true, can_add: true },
-};
 
 fetchMock.get(chartEndpoint, { json: 'foo' });
 
@@ -123,6 +117,12 @@ const createProps = (additionalProps = {}) =>
         y_axis_label: 'count',
       },
       modified: '<span class="no-wrap">7 days ago</span>',
+      owners: [
+        {
+          text: 'Superset Admin',
+          value: 1,
+        },
+      ],
       slice_id: 318,
       slice_name: 'Age distribution of respondents',
       slice_url: '/explore/?form_data=%7B%22slice_id%22%3A%20318%7D',
@@ -141,9 +141,10 @@ const createProps = (additionalProps = {}) =>
     metadata: {
       created_on_humanized: 'a week ago',
       changed_on_humanized: '2 days ago',
-      editors: ['John Doe'],
+      owners: ['John Doe'],
       created_by: 'John Doe',
       changed_by: 'John Doe',
+      editors: [],
       dashboards: [{ id: 1, dashboard_title: 'Test' }],
     },
     canOverwrite: false,
@@ -153,7 +154,7 @@ const createProps = (additionalProps = {}) =>
   }) as unknown as ExploreChartHeaderProps;
 
 fetchMock.post(
-  'http://api/v1/chart/data?form_data=%7B%22slice_id%22%3A318%7D',
+  'glob:*api/v1/chart/data*',
   { body: {} },
 );
 // eslint-disable-next-line no-restricted-globals -- TODO: Migrate from describe blocks
@@ -174,10 +175,7 @@ describe('ExploreChartHeader', () => {
 
   test('Cancelling changes to the properties should reset previous properties', async () => {
     const props = createProps();
-    render(<ExploreHeader {...props} />, {
-      useRedux: true,
-      initialState: EDIT_PROPERTIES_INITIAL_STATE,
-    });
+    render(<ExploreHeader {...props} />, { useRedux: true });
     const newChartName = 'New chart name';
     const prevChartName = props.sliceName;
 
@@ -397,33 +395,6 @@ describe('ExploreChartHeader', () => {
     );
   });
 
-  test('treats chart states of the same chart as in place transitions', async () => {
-    const formData = {
-      viz_type: VizType.Histogram,
-      datasource: '49__table',
-      slice_id: 318,
-    } as QueryFormData;
-    render(<ExploreHeader {...createProps({ formData })} />, {
-      useRedux: true,
-    });
-
-    const [{ isInPlaceTransition }] = (useUnsavedChangesPrompt as jest.Mock)
-      .mock.lastCall;
-
-    expect(
-      isInPlaceTransition(
-        toChartStateHistoryState({ ...formData, row_limit: 10 }),
-      ),
-    ).toBe(true);
-    expect(
-      isInPlaceTransition(
-        toChartStateHistoryState({ ...formData, slice_id: 42 }),
-      ),
-    ).toBe(false);
-    expect(isInPlaceTransition({ fromDashboard: true })).toBe(false);
-    expect(isInPlaceTransition(undefined)).toBe(false);
-  });
-
   test('Save chart', async () => {
     const setSaveChartModalVisibilitySpy = jest.spyOn(
       saveModalActions,
@@ -633,13 +604,15 @@ describe('Additional actions tests', () => {
     const props = createProps();
     render(<ExploreHeader {...props} />, {
       useRedux: true,
-      initialState: EDIT_PROPERTIES_INITIAL_STATE,
     });
 
     userEvent.click(screen.getByLabelText('Menu actions trigger'));
 
     expect(
       await screen.findByText('Edit chart properties'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Reset chart configuration'),
     ).toBeInTheDocument();
     expect(screen.getByText('Data Export Options')).toBeInTheDocument();
     expect(screen.getByText('Share')).toBeInTheDocument();
@@ -728,7 +701,6 @@ describe('Additional actions tests', () => {
     const props = createProps();
     render(<ExploreHeader {...props} />, {
       useRedux: true,
-      initialState: EDIT_PROPERTIES_INITIAL_STATE,
     });
     expect(props.actions.redirectSQLLab).toHaveBeenCalledTimes(0);
     userEvent.click(screen.getByLabelText('Menu actions trigger'));
@@ -776,6 +748,13 @@ describe('Additional actions tests', () => {
   describe('Export All Data', () => {
     let spyDownloadAsImage: jest.SpyInstance;
     let spyExportChart: jest.SpyInstance;
+
+    beforeAll(() => {
+      // jsdom does not define this cleanup API used by exported blob downloads.
+      if (!URL.revokeObjectURL) {
+        URL.revokeObjectURL = () => {};
+      }
+    });
 
     beforeEach(() => {
       spyDownloadAsImage = jest.spyOn(downloadAsImage, 'default');

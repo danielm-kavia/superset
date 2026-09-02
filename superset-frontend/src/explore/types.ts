@@ -78,18 +78,6 @@ export type Datasource = Dataset & {
   schema?: string;
   is_sqllab_view?: boolean;
   extra?: string | object;
-  /**
-   * False when the datasource (e.g. a semantic view) doesn't model raw rows
-   * and therefore can't return a row sample. Defaults to true on the server
-   * side; missing here means the explore UI keeps current behavior.
-   */
-  supports_samples?: boolean;
-  /**
-   * False when the datasource doesn't model raw rows and therefore can't
-   * answer a drill-to-detail query. Tracked separately from
-   * ``supports_samples`` so the two capabilities can diverge.
-   */
-  supports_drill_to_detail?: boolean;
 };
 
 export interface ExplorePageInitialData {
@@ -99,7 +87,8 @@ export interface ExplorePageInitialData {
   metadata?: {
     created_on_humanized: string;
     changed_on_humanized: string;
-    editors: string[];
+    owners: string[];
+    extra_owners?: { id: number; first_name: string; last_name: string }[];
     created_by?: string;
     changed_by?: string;
     color_namespace?: string;
@@ -139,6 +128,8 @@ export interface ExplorePageState {
     datasource: Dataset;
     controls: ControlStateMapping;
     form_data: QueryFormData;
+    initialFormData?: QueryFormData;
+    initialDatasource?: Dataset;
     hiddenFormData?: Partial<QueryFormData>;
     slice: Slice;
     controlsTransferred: string[];
