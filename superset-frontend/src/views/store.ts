@@ -28,7 +28,7 @@ import {
   useSelector,
   type TypedUseSelectorHook,
 } from 'react-redux';
-import thunk, { type ThunkDispatch } from 'redux-thunk';
+import type { ThunkDispatch } from 'redux-thunk';
 import { api } from 'src/hooks/apiResources/queryApi';
 import messageToastReducer from 'src/components/MessageToasts/reducers';
 import charts from 'src/components/Chart/chartReducer';
@@ -114,13 +114,15 @@ const getMiddleware: ConfigureStoreOptions['middleware'] =
           api.middleware,
           versionSessionLogMiddleware,
         )
-      : [
+      : getDefaultMiddleware({
+          immutableCheck: false,
+          serializableCheck: false,
+        }).concat(
           listenerMiddleware.middleware,
-          thunk,
           logger,
           api.middleware,
           versionSessionLogMiddleware,
-        ];
+        );
 
 // TODO: This reducer is a combination of the Dashboard and Explore reducers.
 // The correct way of handling this is to unify the actions and reducers from both
@@ -190,7 +192,26 @@ export function setupStore({
     },
     middleware: getMiddleware,
     devTools: process.env.WEBPACK_MODE === 'development' && !disableDebugger,
-    enhancers: [persistSqlLabStateEnhancer as StoreEnhancer],
+    // Redux Toolkit 2 requires extending the default enhancer tuple through
+    // its callback API rather than replacing it with a plain array.
+    enhancers: getDefaultEnhancers => {
+      const defaultEnhancers = getDefaultEnhancers();
+
+      // setupStore supports custom reducer maps for isolated applications and
+      // tests. SQL Lab persistence requires the sqlLab slice, so do not attach
+      // the enhancer when that optional override does not provide it.
+      if (
+        typeof rootReducers === 'object' &&
+        rootReducers !== null &&
+        'sqlLab' in rootReducers
+      ) {
+        return defaultEnhancers.concat(
+          persistSqlLabStateEnhancer as StoreEnhancer,
+        );
+      }
+
+      return defaultEnhancers;
+    },
     ...overrides,
   });
 }
@@ -201,8 +222,8 @@ export type RootState = ReturnType<typeof store.getState>;
 // Typed Redux hooks. Prefer these over the raw `useDispatch` / `useSelector`
 // from react-redux: `useAppDispatch` understands the store's middleware (so
 // thunks resolve correctly), and `useAppSelector` infers `RootState` without
-// callers having to annotate every selector. Required ahead of the
-// react-redux v8+ bump, which tightens dispatch typing — see #39927.
+// callers having to annotate every selector. React Redux 9 provides these
+// typed hooks through its supported `withTypes` API.
 //
 // AppDispatch is declared as ThunkDispatch & store.dispatch rather than
 // `typeof store.dispatch` because Superset annotates getMiddleware as
@@ -212,5 +233,5 @@ export type RootState = ReturnType<typeof store.getState>;
 // setup.
 export type AppDispatch = ThunkDispatch<RootState, undefined, AnyAction> &
   typeof store.dispatch;
-export const useAppDispatch: () => AppDispatch = useDispatch;
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();

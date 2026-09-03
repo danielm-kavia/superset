@@ -23,7 +23,6 @@ import { Input, Select, Button } from '@superset-ui/core/components';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
-import { cellRegistryEntries } from '@great-expectations/jsonforms-antd-renderers';
 import type { ErrorObject } from 'ajv';
 import {
   StandardModal,
@@ -41,6 +40,7 @@ import {
   serializeDependencyValues,
   SCHEMA_REFRESH_DEBOUNCE_MS,
 } from './jsonFormsHelpers';
+import { cellRegistryEntries } from './jsonFormsRenderers';
 
 const ModalContent = styled.div`
   padding: ${({ theme }) => theme.sizeUnit * 4}px;

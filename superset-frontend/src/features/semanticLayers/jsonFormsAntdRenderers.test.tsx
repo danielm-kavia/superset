@@ -26,21 +26,17 @@ import {
 } from 'spec/helpers/testing-library';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema } from '@jsonforms/core';
-import { cellRegistryEntries } from '@great-expectations/jsonforms-antd-renderers';
 import { renderers, buildUiSchema, sanitizeSchema } from './jsonFormsHelpers';
+import { cellRegistryEntries } from './jsonFormsRenderers';
 
 /**
- * Real-render smoke test for @great-expectations/jsonforms-antd-renderers.
+ * Real-render smoke test for the local semantic JSON Forms registry.
  *
- * The package has NO antd 6 release — it is pinned onto antd 6 via a
- * package.json override — and it renders forms from runtime schemas, so a
- * breaking antd change in its renderers is invisible to TypeScript. The
- * SemanticLayerModal tests mock <JsonForms /> away, leaving this the only
- * coverage that the vendor's renderers actually mount against antd 6.
- * Renders exactly the way the modal does (same renderers, cells, and
- * uischema builder).
+ * SemanticLayerModal tests mock <JsonForms /> away, leaving this as direct
+ * coverage that the local controls mount against Ant Design 6 wrappers.
+ * It renders exactly as the modal does: with the same renderer registry,
+ * cell registry, and UI-schema builder.
  */
-
 const schema = sanitizeSchema({
   type: 'object',
   properties: {
@@ -60,6 +56,23 @@ const schema = sanitizeSchema({
     port: {
       type: 'number',
       title: 'Port',
+    },
+    service_token: {
+      type: 'string',
+      title: 'Service token',
+      format: 'password',
+    },
+    locked_database: {
+      type: 'string',
+      title: 'Locked database',
+      default: 'analytics',
+      readOnly: true,
+    },
+    dynamic_host: {
+      type: 'string',
+      title: 'Dynamic host',
+      'x-dynamic': true,
+      'x-dependsOn': ['account'],
     },
   },
   required: ['account'],
@@ -84,12 +97,12 @@ const setup = (data: Record<string, unknown> = {}) => {
 test('renders string, enum, boolean, and number controls from a schema', () => {
   setup();
 
-  // string + number → real inputs with their schema titles as labels
+  // String + number render as real inputs with their schema titles as labels.
   expect(screen.getByLabelText('Account')).toBeInTheDocument();
   expect(screen.getByLabelText('Port')).toBeInTheDocument();
-  // enum → an antd select (combobox role)
+  // Enum renders as an Ant Design Select.
   expect(screen.getByRole('combobox', { name: 'Warehouse' })).toBeVisible();
-  // boolean control renders with its title
+  // Boolean renders with its title.
   expect(screen.getByText('Use SSL')).toBeInTheDocument();
 });
 
@@ -98,9 +111,8 @@ test('typing into a text control propagates through onChange', async () => {
 
   const input = screen.getByLabelText('Account');
   await userEvent.type(input, 'acme');
-  // commit the value; avoid userEvent.tab() — the vendor's checkbox id
-  // ("#/properties/use_ssl-input") breaks nwsapi's focusable-element scan
   fireEvent.blur(input);
+
   await waitFor(() =>
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -122,4 +134,15 @@ test('enum control opens an antd 6 dropdown and selects an option', async () => 
       }),
     ),
   );
+});
+
+test('uses local TextControl behavior for password, read-only, and dynamic fields', () => {
+  setup({ account: 'acme' });
+
+  expect(screen.getByLabelText('Service token')).toHaveAttribute(
+    'type',
+    'password',
+  );
+  expect(screen.getByLabelText('Locked database')).toBeDisabled();
+  expect(screen.getByLabelText('Dynamic host')).toBeEnabled();
 });

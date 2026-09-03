@@ -26,7 +26,6 @@ import { Spin } from '@superset-ui/core/components/Spin';
 import { Icons } from '@superset-ui/core/components/Icons';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
-import { cellRegistryEntries } from '@great-expectations/jsonforms-antd-renderers';
 import type { ErrorObject } from 'ajv';
 import {
   StandardModal,
@@ -43,6 +42,7 @@ import {
   stableSerialize,
   SCHEMA_REFRESH_DEBOUNCE_MS,
 } from 'src/features/semanticLayers/jsonFormsHelpers';
+import { cellRegistryEntries } from 'src/features/semanticLayers/jsonFormsRenderers';
 
 interface SemanticLayerOption {
   uuid: string;
@@ -74,8 +74,8 @@ const SectionLabel = styled.div`
 const VerticalFormFields = styled.div`
   margin-bottom: ${({ theme }) => theme.sizeUnit * 4}px;
 
-  /* The antd renderer's VerticalLayout creates its own <Form> —
-     force flex-column so gap controls spacing between fields */
+  /* JSON Forms fallback layouts create their own <Form>; force flex-column
+     so gap controls spacing between fields. */
   && form {
     display: flex;
     flex-direction: column;

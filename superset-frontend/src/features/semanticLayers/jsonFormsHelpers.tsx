@@ -37,7 +37,7 @@ import {
 import {
   rendererRegistryEntries,
   TextControl,
-} from '@great-expectations/jsonforms-antd-renderers';
+} from './jsonFormsRenderers';
 
 export const SCHEMA_REFRESH_DEBOUNCE_MS = 500;
 
@@ -263,10 +263,9 @@ export function DynamicFieldControl(props: ControlProps) {
 }
 const DynamicFieldRenderer = withJsonFormsControlProps(DynamicFieldControl);
 const dynamicFieldEntry = {
-  // Rank 6 so we beat ``@great-expectations`` ``EnumControl`` (rank 4) — when
-  // a field is both ``x-dynamic`` and has an ``enum`` (e.g. the Snowflake
-  // ``schema`` dropdown), the plain EnumControl would otherwise win and
-  // bypass our loading / dependency-clearing behavior entirely.
+  // Rank 6 so a field that is both ``x-dynamic`` and has an ``enum`` (e.g. the
+  // Snowflake ``schema`` dropdown) bypasses the standard enum renderer and
+  // retains its loading and dependency-clearing behavior.
   tester: rankWith(
     6,
     and(
