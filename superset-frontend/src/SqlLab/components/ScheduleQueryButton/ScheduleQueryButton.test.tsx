@@ -91,6 +91,8 @@ test('renders the rjsf schedule form fields inside the modal', async () => {
   await waitFor(() => {
     expect(screen.getByText('Output table name')).toBeInTheDocument();
   });
+  // RJSF owns the native form so that its submit behavior is valid HTML.
+  expect(document.querySelectorAll('form')).toHaveLength(1);
   expect(screen.getByText('Start date')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
 });

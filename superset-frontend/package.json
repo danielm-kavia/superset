@@ -123,7 +123,7 @@
     "@luma.gl/webgl": "~9.2.5",
     "@reduxjs/toolkit": "^1.9.3",
     "@rjsf/core": "^6.8.0",
-    "@rjsf/utils": "^6.6.2",
+    "@rjsf/utils": "^6.8.0",
     "@rjsf/validator-ajv8": "^6.8.0",
     "@scarf/scarf": "^1.4.0",
     "@superset-ui/chart-controls": "file:./packages/superset-ui-chart-controls",

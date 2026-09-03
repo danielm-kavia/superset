@@ -178,7 +178,9 @@ const ScheduleQueryButton: FunctionComponent<ScheduleQueryButtonProps> = ({
   };
 
   const renderModalBody = () => (
-    <Form layout="vertical">
+    // SchemaForm renders the native submission form. Keep Ant Design's layout
+    // behavior without rendering a second, invalid nested <form> element.
+    <Form component={false} layout="vertical">
       <StyledRow>
         <Col xs={24}>
           <FormItem label={t('Label')}>
